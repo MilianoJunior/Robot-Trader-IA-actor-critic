@@ -89,8 +89,7 @@ model = ActorCritic(num_actions, num_hidden_units)
 trader = Trade()
 
 colunas = ['Hora','dif', 'retacao +','retracao -', 'RSI', 'M22M44', 'M22M66', 'M66M44', 'ADX', 'ATR',
-           'Momentum', 'Force','VOL', 'CCI', 'Bears', 'Bulls', 'Stock1',
-           'Stock2', 'Wilians', 'Std', 'MFI', 'band1', 'band2','band3']
+           'Momentum', 'Force']
 
 colunas1 = ['Hora', 'open', 'high', 'low', 'close'] 
 
@@ -163,8 +162,6 @@ class ambiente():
         if self.cont >= (len(dados3)-10):
             self.cont =0
         if self.dados3.values[self.cont][0] == '09:00':
-
-            # self.cont = 0
             self.contador = 0
             self.A =[0,0]
             done = True
