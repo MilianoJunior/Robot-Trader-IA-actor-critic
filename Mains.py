@@ -32,6 +32,8 @@ seed = 42
 # env.seed(seed)
 tf.random.set_seed(seed)
 np.random.seed(seed)
+num_days = 30000
+# cudart64_110.dll
 
 # Small epsilon value for stabilizing division operations
 eps = np.finfo(np.float32).eps.item()
@@ -93,8 +95,8 @@ colunas = ['Hora','dif', 'retacao +','retracao -', 'RSI', 'M22M44', 'M22M66', 'M
 
 colunas1 = ['Hora', 'open', 'high', 'low', 'close'] 
 
-dados3 = pd.DataFrame(data=base[len(base)-50000:len(base)-10].values,columns=base.columns)      
-dados2 = pd.DataFrame(data=base[len(base)-50000:len(base)-10].values,columns=base.columns)
+dados3 = pd.DataFrame(data=base[-num_days:-1].values,columns=base.columns)      
+dados2 = pd.DataFrame(data=base[-num_days:-1].values,columns=base.columns)
 dados4 = pd.DataFrame(data=base[600000:600500].values,columns=base.columns)
 dados5 = pd.DataFrame(data=base[600000:600500].values,columns=base.columns)
 dados2 = dados2[colunas]
@@ -123,7 +125,7 @@ class ambiente():
         self.model = model
         self.comprado = False
         self.valor = 0
-        self.media = []
+        self.media = pd.DataFrame(columns=['ganho']) 
         self.metal = False
         self.actionA = 0
         self.A =[0,0]
@@ -162,12 +164,14 @@ class ambiente():
         if self.cont >= (len(dados3)-10):
             self.cont =0
         if self.dados3.values[self.cont][0] == '09:00':
+        # if len(self.dados3) <= self.cont:
             self.contador = 0
             self.A =[0,0]
             done = True
-            self.media.append(sum(neg.ganhofinal))
+            self.media = self.media.append({'ganho': sum(neg.ganhofinal)},ignore_index=True)
+            rolling = self.media.rolling(window=30).mean()
             print('Final')
-            print('ganho atual: ',sum(neg.ganhofinal),'N operacoes: ',len(neg.ganhofinal),' media: ',sum(self.media)/len(self.media))
+            print('ganho atual: ',sum(neg.ganhofinal),'N operacoes: ',len(neg.ganhofinal),' media: ',rolling.values[-1])
             trader.reset()
         return self.dados2.values[self.cont],recompensa,done
     def reset(self):
@@ -330,7 +334,7 @@ def train_step(
 # self.dados2.values[self.cont]
 rr = len(dados3)/5000
 # print('rr: ',rr)
-max_episodes = 10000
+max_episodes = 100
 max_steps_per_episode = 550000
 
 # Cartpole-v0 is considered solved if average reward is >= 195 over 100 
@@ -339,7 +343,7 @@ reward_threshold = 10000000
 running_reward = 120
 
 # Discount factor for future rewards
-gamma = 0.95
+gamma = 0.99
 
 
 with tqdm.trange(max_episodes) as t:
@@ -373,37 +377,38 @@ trader.reset()
 A =[0,0]
 for i in range(len(dados2)-1):
     initial_state = tf.constant([dados2.values[i]], dtype=tf.float32)
+    print(initial_state)
     action2 = model.predict(initial_state)
     action2 = np.argmax(action2[0][0])
     compra,venda,neg,ficha,comprado,vendido,posicao=trader.agente(dados3.values[i],A[i],stop,gain,0)
-    
+    print(action2)
     A.append(action2)
   
 
-fig = go.Figure(data=[go.Candlestick(x=dados3.Hora[0:len(dados2)-1],
-                open=dados3.open[0:len(dados2)-1], high=dados3.high[0:len(dados2)-1],
-                low=dados3.low[0:len(dados2)-1], close=dados3.close[0:len(dados2)-1])
-                      ])
+# fig = go.Figure(data=[go.Candlestick(x=dados3.Hora[0:len(dados2)-1],
+#                 open=dados3.open[0:len(dados2)-1], high=dados3.high[0:len(dados2)-1],
+#                 low=dados3.low[0:len(dados2)-1], close=dados3.close[0:len(dados2)-1])
+#                       ])
 
-op = []
-for j in range(len(neg)-1):
-    if neg.tipo.values[j] == 'compra':
-        op.append(dict(x0=neg.inicio.values[j], x1=neg.fim.values[j], y0=0, y1=0.5, xref='x', yref='paper',line_width=2,name='compra'))
-    if neg.tipo.values[j] == 'venda':
-        op.append(dict(x0=neg.inicio.values[j], x1=neg.fim.values[j], y0=0, y1=1, xref='x', yref='paper',line_width=4,name='venda'))
+# op = []
+# for j in range(len(neg)-1):
+#     if neg.tipo.values[j] == 'compra':
+#         op.append(dict(x0=neg.inicio.values[j], x1=neg.fim.values[j], y0=0, y1=0.5, xref='x', yref='paper',line_width=2,name='compra'))
+#     if neg.tipo.values[j] == 'venda':
+#         op.append(dict(x0=neg.inicio.values[j], x1=neg.fim.values[j], y0=0, y1=1, xref='x', yref='paper',line_width=4,name='venda'))
     
 
 
-fig.update_layout(
-    title='Ambiente controlado',
-    yaxis_title='WIN',
-    shapes = op,
-    annotations=[dict(
-        x='2016-12-09', y=0.05, xref='x', yref='paper',
-        showarrow=False, xanchor='left', text='Increase Period Begins')]
-)
+# fig.update_layout(
+#     title='Ambiente controlado',
+#     yaxis_title='WIN',
+#     shapes = op,
+#     annotations=[dict(
+#         x='2016-12-09', y=0.05, xref='x', yref='paper',
+#         showarrow=False, xanchor='left', text='Increase Period Begins')]
+# )
 
 
-fig.write_html("teste.html")
+# fig.write_html("teste.html")
 
-model.save('M15/modelo_15')  
+# model.save('M16/modelo_16')  
